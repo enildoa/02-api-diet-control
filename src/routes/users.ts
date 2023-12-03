@@ -33,4 +33,38 @@ export async function usersRoutes(app: FastifyInstance) {
 
     return reply.status(201).send()
   })
+
+  app.post('/login', async (request, reply) => {
+    const createUserBodySchema = z.object({
+      email: z.string(),
+      password: z.string()
+    })
+
+    const { email, password } = createUserBodySchema.parse(
+      request.body,
+    )
+
+    const user = await knex('users')
+      .where({
+        email
+      })
+      .first()
+
+    if(!(user?.password === crypto.createHash('sha256').update(password).digest('hex'))) {
+      return reply.status(401).send({
+        error: 'Unauthorized.',
+      })
+    }
+
+    let userId = request.cookies.userId
+
+    if (!userId) {
+      reply.cookie('userId', user.id, {
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 1, // 1 day
+      })
+    }
+    
+    return {userId: user.id}
+  })
 }
